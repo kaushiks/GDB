@@ -431,6 +431,7 @@ extern int frame_relative_level (struct frame_info *fi);
 /* Return the frame's type.  */
 
 extern enum frame_type get_frame_type (struct frame_info *);
+extern const struct frame_symtab *get_frame_symtab (struct frame_info *frame);
 
 /* Return the frame's program space.  */
 extern struct program_space *get_frame_program_space (struct frame_info *);

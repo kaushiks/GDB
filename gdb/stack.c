@@ -742,16 +742,16 @@ do_gdb_disassembly (struct gdbarch *gdbarch,
     }
 }
 
-/* Print information about frame FRAME.  The output is format according
-   to PRINT_LEVEL and PRINT_WHAT and PRINT_ARGS.  The meaning of
-   PRINT_WHAT is:
-   
+/* Print information about frame FRAME. The output is formatted according
+   to PRINT_LEVEL, PRINT_WHAT and PRINT_ARGS.
+
+   The meaning of PRINT_WHAT is:
    SRC_LINE: Print only source line.
    LOCATION: Print only location.
    LOC_AND_SRC: Print location and source line.
 
    Used in "where" output, and to emit breakpoint or step
-   messages.  */
+   messages. */
 
 void
 print_frame_info (struct frame_info *frame, int print_level,
@@ -1101,6 +1101,7 @@ print_frame (struct frame_info *frame, int print_level,
 {
   struct gdbarch *gdbarch = get_frame_arch (frame);
   struct ui_out *uiout = current_uiout;
+  const struct frame_symtab *frame_symtab = NULL;
   const char *funname = NULL;
   enum language funlang = language_unknown;
   struct ui_file *stb;
@@ -1116,6 +1117,10 @@ print_frame (struct frame_info *frame, int print_level,
   old_chain = make_cleanup_ui_file_delete (stb);
 
   find_frame_funname (frame, &funname, &funlang, &func);
+  if ((!funname) && (frame_symtab = get_frame_symtab (frame)))
+    {
+      funname = frame_symtab->get_name (frame);
+    }
 
   annotate_frame_begin (print_level ? frame_relative_level (frame) : 0,
 			gdbarch, pc);

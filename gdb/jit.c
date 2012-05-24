@@ -38,6 +38,7 @@
 #include "gdb-dlfcn.h"
 #include "gdb_stat.h"
 #include "exceptions.h"
+#include "printcmd.h"
 
 static const char *jit_reader_dir = NULL;
 
@@ -60,6 +61,10 @@ static struct gdbarch_data *jit_gdbarch_data;
 /* Non-zero if we want to see trace of jit level stuff.  */
 
 static int jit_debug = 0;
+
+/* Length of the string buffer GDB gives the reader's
+   frame based symbol resolver. */
+static const int jit_string_buffer_value_length = 256;
 
 static void
 show_jit_debug (struct ui_file *file, int from_tty,
@@ -672,6 +677,7 @@ finalize_symtab (struct gdb_symtab *stab, struct objfile *objfile)
       SYMBOL_DOMAIN (block_name) = VAR_DOMAIN;
       SYMBOL_CLASS (block_name) = LOC_BLOCK;
       SYMBOL_SYMTAB (block_name) = symtab;
+      SYMBOL_TYPE (block_name) = lookup_function_type(arch_type(target_gdbarch, TYPE_CODE_VOID, 1, "void"));
       SYMBOL_BLOCK_VALUE (block_name) = new_block;
 
       block_name->ginfo.name = obsavestring (gdb_block_iter->name,
@@ -1084,6 +1090,77 @@ jit_dealloc_cache (struct frame_info *this_frame, void *cache)
   xfree (priv_data);
 }
 
+static char *
+jit_frame_symtab_frame_func_impl (struct frame_info *frame, gdb_frame_symtab_func *callback)
+{
+  struct gdb_string_buffer_value string;
+  struct jit_unwind_private unwind;
+  struct gdb_unwind_callbacks callbacks;
+  char *name = NULL;
+
+  gdb_assert (callback);
+
+  string.length = jit_string_buffer_value_length;
+  string.buffer = xzalloc (jit_string_buffer_value_length * sizeof(char));
+
+  if (string.buffer)
+    {
+      unwind.registers = NULL;
+      unwind.this_frame = frame;
+
+      callbacks.reg_get = jit_unwind_reg_get_impl;
+      callbacks.reg_set = jit_unwind_reg_set_impl;
+      callbacks.target_read = jit_target_read_impl;
+      callbacks.priv_data = &unwind;
+
+      if (callback (loaded_jit_reader->functions,
+		    &callbacks,
+		    &string) == GDB_SUCCESS)
+	name = string.buffer;
+    }
+
+  return name;
+}
+
+static char *
+jit_frame_symtab_get_name_impl (struct frame_info *frame)
+{
+  if (loaded_jit_reader && loaded_jit_reader->functions->get_frame_name)
+    return jit_frame_symtab_frame_func_impl(frame,
+					    loaded_jit_reader->functions->get_frame_name);
+  else
+    return NULL;
+}
+
+static char *
+jit_frame_symtab_get_file_impl (struct frame_info *frame)
+{
+  if (loaded_jit_reader && loaded_jit_reader->functions->get_frame_file)
+    return jit_frame_symtab_frame_func_impl(frame,
+					    loaded_jit_reader->functions->get_frame_file);
+  else
+    return NULL;
+}
+
+static char *
+jit_frame_symtab_get_line_number_impl (struct frame_info *frame)
+{
+  if (loaded_jit_reader && loaded_jit_reader->functions->get_frame_line_number)
+    return jit_frame_symtab_frame_func_impl(frame,
+					    loaded_jit_reader->functions->get_frame_line_number);
+  else
+    return NULL;
+}
+
+/* JIT frame based symbol resolver. */
+
+static const struct frame_symtab jit_frame_symtab =
+{
+  jit_frame_symtab_get_name_impl,
+  jit_frame_symtab_get_file_impl,
+  jit_frame_symtab_get_line_number_impl
+};
+
 /* The frame sniffer for the pseudo unwinder.
 
    While this is nominally a frame sniffer, in the case where the JIT
@@ -1202,9 +1279,10 @@ static const struct frame_unwind jit_frame_unwind =
   jit_frame_prev_register,
   NULL,
   jit_frame_sniffer,
-  jit_dealloc_cache
+  jit_dealloc_cache,
+  NULL,
+  &jit_frame_symtab
 };
-
 
 /* This is the information that is stored at jit_gdbarch_data for each
    architecture.  */

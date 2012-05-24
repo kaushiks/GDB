@@ -27,6 +27,7 @@ struct frame_unwind;
 struct gdbarch;
 struct regcache;
 struct value;
+struct frame_symtab;
 
 #include "frame.h"		/* For enum frame_type.  */
 
@@ -152,6 +153,7 @@ struct frame_unwind
   frame_sniffer_ftype *sniffer;
   frame_dealloc_cache_ftype *dealloc_cache;
   frame_prev_arch_ftype *prev_arch;
+  const struct frame_symtab *symtab;
 };
 
 /* Register a frame unwinder, _prepending_ it to the front of the

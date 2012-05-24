@@ -1286,4 +1286,12 @@ void iterate_over_symbols (const struct block *block, const char *name,
 struct cleanup *demangle_for_lookup (const char *name, enum language lang,
 				     const char **result_name);
 
+typedef char *(frame_symtab_get_name) (struct frame_info *frame);
+struct frame_symtab
+{
+  frame_symtab_get_name *get_name;
+  frame_symtab_get_name *get_file;
+  frame_symtab_get_name *get_line_number;
+};
+
 #endif /* !defined(SYMTAB_H) */

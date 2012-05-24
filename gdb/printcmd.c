@@ -49,6 +49,7 @@
 #include "charset.h"
 #include "arch-utils.h"
 #include "cli/cli-utils.h"
+#include "printcmd.h"
 
 #ifdef TUI
 #include "tui/tui.h"		/* For tui_active et al.   */
@@ -1998,7 +1999,7 @@ print_variable_and_value (const char *name, struct symbol *var,
 
 /* printf "printf format string" ARG to STREAM.  */
 
-static void
+void
 ui_printf (char *arg, struct ui_file *stream)
 {
   char *f = NULL;

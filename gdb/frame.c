@@ -2227,6 +2227,14 @@ get_frame_type (struct frame_info *frame)
   return frame->unwind->type;
 }
 
+const struct frame_symtab *
+get_frame_symtab (struct frame_info *frame)
+{
+  if (frame->unwind == NULL)
+    frame_unwind_find_by_frame (frame, &frame->prologue_cache);
+  return frame->unwind->symtab;
+}
+
 struct program_space *
 get_frame_program_space (struct frame_info *frame)
 {
